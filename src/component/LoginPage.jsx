@@ -3,12 +3,14 @@ import React, { useState } from "react";
 // import googleIcon from "../assets/images/google.png";
 // import facebookIcon from "../assets/images/facebook.svg";
 // import xIcon from "../assets/images/X.png";
+import axios from "axios";
+
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const hangleLogin = () => {
+  const hangleLogin = async () => {
     if (email === null || email === "") {
       setError("Please input a email, can not empty");
       return;
@@ -16,6 +18,13 @@ const LoginPage = () => {
     if (!validateEmail(email)) {
       setError("Please input a valid email");
       return;
+    }
+    try {
+      const response = await axios.post("/api/login", { email, password });
+      console.log("Login successful", response.data);
+      // Optionally handle successful login here, e.g., redirect
+    } catch (error) {
+      setError("Login failed, please try again");
     }
   };
 

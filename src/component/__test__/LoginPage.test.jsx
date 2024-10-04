@@ -1,8 +1,9 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import LoginPage, { validateEmail } from "../LoginPage";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
+import axios from "axios";
 
 describe("Test LoginPage components", () => {
   test("Render the login form correctly", async () => {
@@ -29,7 +30,7 @@ describe("Test LoginPage components", () => {
 });
 
 describe("Test Validation Email functional", () => {
-  //Kiểm tra function validate email nhập vào từ form
+  // Kiểm tra function validate email nhập vào từ form
   test("should be failed on email validation with random string", () => {
     //thiết lập dữ liệu đầu vào cho function
     const randomString = "MailAoDemo";
@@ -38,7 +39,6 @@ describe("Test Validation Email functional", () => {
     //kiểm tra kết quả trả về
     expect(testDemo).toBe(false);
   });
-
   test("should be failed on email validation with invalid email", () => {
     //thiết lập dữ liệu đầu vào cho function
     const wrongEmail = "MailAoDemo@mail.#com";
@@ -47,7 +47,6 @@ describe("Test Validation Email functional", () => {
     //kiểm tra kết quả trả về
     expect(testDemo).toBe(false);
   });
-
   test("should be passed on email validation with valid email", () => {
     //thiết lập dữ liệu đầu vào cho function
     const wrondEmail = "MailAoDemo@gmail.com";
@@ -99,5 +98,71 @@ describe("Test Login function", () => {
         ? await screen.queryAllByTestId("error-message")
         : null;
     expect(errorMessage).not.toBeInTheDocument();
+  });
+});
+
+// Mock the axios module
+jest.mock("axios");
+
+describe("Test Login function with API mocking", () => {
+  test("Login with valid email and API success", async () => {
+    // Mock axios post để trả về phản hồi đăng nhập thành công
+    axios.post.mockResolvedValueOnce({ data: { message: "Login successful" } });
+
+    render(<LoginPage />);
+
+    const email = screen.getByTestId("email-input");
+    const password = screen.getByTestId("password-input");
+    const button = screen.getByTestId("login-btn");
+
+    // Mô phỏng người dùng nhập email và mật khẩu
+    await userEvent.type(email, "testuser@gmail.com");
+    await userEvent.type(password, "password123");
+
+    // Mô phỏng việc người dùng nhấn nút đăng nhập
+    await userEvent.click(button);
+
+    // Chờ mock axios giải quyết và kiểm tra xem đăng nhập có thành công không
+    waitFor(async () => {
+      // Kiểm tra axios.post được gọi với đúng tham số
+      expect(axios.post).toHaveBeenCalledWith("/api/login", {
+        email: "testuser@gmail.com",
+        password: "password123",
+      });
+      const successfulMessage = await screen.findByText("Login successful");
+      expect(successfulMessage).toBeInTheDocument();
+    });
+  });
+
+  test("Login with valid email and API return Login failed", async () => {
+    // Mock axios post để trả về lỗi đăng nhập
+    axios.post.mockRejectedValueOnce(
+      new Error("Login failed, please try again")
+    );
+    render(<LoginPage />);
+
+    const email = screen.getByTestId("email-input");
+    const password = screen.getByTestId("password-input");
+    const button = screen.getByTestId("login-btn");
+
+    // Mô phỏng người dùng nhập email và mật khẩu
+    await userEvent.type(email, "testuser@gmail.com");
+    await userEvent.type(password, "password123");
+
+    // Mô phỏng việc người dùng nhấn nút đăng nhập
+    await userEvent.click(button);
+
+    // Chờ mock axios giải quyết và kiểm tra xem đăng nhập có thành công không
+    waitFor(async () => {
+      // Assert that axios.post was called with the correct arguments
+      expect(axios.post).toHaveBeenCalledWith("/api/login", {
+        email: "testuser@gmail.com",
+        password: "wrongpassword",
+      });
+      const errorMessage = await screen.findByText(
+        "Login failed, please try again"
+      );
+      expect(errorMessage).toBeInTheDocument();
+    });
   });
 });
